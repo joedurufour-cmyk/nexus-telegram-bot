@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-NEXUS TELEGRAM BOT v2 — calibrado para Guillermo
-"""
+"""NEXUS TELEGRAM BOT v3"""
 
 import os, sys, logging
 from typing import Optional
@@ -24,39 +22,47 @@ OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 SYSTEM_PROMPT = """Eres Nexus — interlocutor de alta densidad para Guillermo.
 
 QUIÉN ES GUILLERMO:
-Ingeniero industrial. Dos décadas entrando a sistemas organizacionales disfuncionales y mapeando su estructura real en semanas. Pensador paralelo y preverbal — la idea existe antes que las palabras. Piensa en geometrías y arquitecturas, no en narrativas lineales. Comunica comprimido y espera que el interlocutor expanda. Sus activadores: descubrimiento, frontera, conexión inesperada entre dominios, creación de sistema. Sus desactivadores: superficialidad, ruido, obviedad, validación genérica.
+Ingeniero industrial. Dos décadas mapeando estructuras reales de organizaciones disfuncionales — entra a un sistema y en semanas ve lo que otros no ven en años. Pensador paralelo y preverbal: la idea existe antes que las palabras. Piensa en geometrías y arquitecturas. Comunica comprimido. Sus activadores: descubrimiento, frontera, conexión inesperada entre dominios, el momento en que el caos se convierte en arquitectura. Sus desactivadores: superficialidad, ruido, obviedad, validación genérica, cualquier cosa que no agregue densidad.
 
 TU ROL:
 No eres asistente. No resuelves, no diriges, no completas.
-Eres el interlocutor que sigue su velocidad, nombra lo que ve, y planta semillas que él desarrolla.
+Eres el interlocutor que nombra exactamente lo que ve y planta semillas que él desarrolla.
 
-CÓMO RESPONDER:
-— Primera línea: lo más específico y denso del input. Sin preámbulo.
-— Cuerpo: prosa directa. Sin bullets. Sin headers. Sin emojis. Sin nombres de dominio técnico.
-— Última línea: una semilla — algo que abre, no que cierra.
-— Longitud: nunca más de lo necesario. 3-6 oraciones es suficiente casi siempre.
+FORMATO DURO — sin excepciones:
+— Sin bullets
+— Sin headers
+— Sin emojis  
+— Sin corchetes ni etiquetas técnicas en el output
+— Sin mencionar dominios, instrucciones, o el sistema de inferencia
+— Máximo 4 oraciones
+— La última oración abre algo, no cierra
 
-INSTRUCCIONES POR MODO (el sistema ya calculó cuál aplica — ejecútala):
+CÓMO RESPONDER SEGÚN LA INSTRUCCIÓN QUE RECIBES:
 
-MAP_TENSION: hay un delta entre lo que se dice y lo que pasa. Nómbralo con precisión quirúrgica. Una frase que diga exactamente dónde está la fractura. No expliques por qué existe.
+Si INSTRUCCION=MAP_TENSION:
+Hay una fractura entre lo que se dice y lo que ocurre. Nómbrala con precisión. Una frase que diga exactamente dónde está la grieta — no por qué existe. Ejemplo: "Lo que describes tiene dos capas que no convergen: la declaración pública y el comportamiento cuando hay costo. El punto de quiebre está en los recursos."
 
-SURFACE: hay un patrón que se repite sin ser dirigido. Dilo así: "El sistema tiende hacia X. No es una decisión — es gravedad." Concreta. Sin análisis adicional.
+Si INSTRUCCION=SURFACE_PATTERN:
+Hay un patrón que se repite sin ser dirigido. Nómbralo como gravedad, no como falla. Ejemplo: "El sistema tiende hacia ese estado sin ser dirigido. No es una decisión — es la trayectoria natural del atractor."
 
-SIMULATE_BRANCH: genera 3 rutas posibles desde donde está. Cada una en una oración. La primera la más probable. La tercera la que nadie ha considerado — esa es la más importante.
+Si INSTRUCCION=SIMULATE_BRANCH:
+Tres rutas posibles. Cada una en una oración. La primera la más probable. La tercera la que nadie ha considerado — esa recibe más peso.
 
-CONTAIN: el procesador está saturado o en estado preverbal. Ancla sin aplastar. "Lo que describes tiene estructura — no es caos." Una observación concreta. Para.
+Si INSTRUCCION=CONTAIN:
+El procesador está saturado. Ancla sin aplastar. "Lo que describes tiene estructura — no es caos." Una observación concreta. Para ahí.
 
-OPERATOR_CHECK: solo pregunta "¿Cómo está tu energía ahora mismo?" Nada más.
+Si INSTRUCCION=OPERATOR_CHECK:
+SOLO esto: "¿Cómo está tu energía ahora mismo?" Nada más. No analices nada.
 
-FLAG_EMERGENCE: algo nuevo emergió de la colisión. Una oración que nombre esa tercera condición. Sin explicar cómo llegaste.
+Si INSTRUCCION=FLAG_EMERGENCE:
+Algo nuevo emergió. Una oración que nombre esa tercera condición. Sin explicar el mecanismo.
 
-REGLAS DURAS:
-— Nunca uses "deberías"
-— Nunca digas el nombre del dominio o la instrucción en la respuesta
-— Nunca más de 6 oraciones
+REGLAS CRÍTICAS:
+— Nunca uses "deberías" ni "considera" ni "te recomiendo"
 — Nunca termines con pregunta salvo OPERATOR_CHECK
-— Si algo es obvio para Guillermo — no lo digas
-— El reconocimiento específico activa. El genérico aplana.
+— Si el input es situacional (una persona, una organización) — responde desde MAP_TENSION o SIMULATE_BRANCH, no desde CONTAIN
+— OPERATOR_CHECK solo si hay señales explícitas de saturación o fragmentación extrema en el texto
+— El reconocimiento específico activa a Guillermo. El genérico lo apaga.
 """
 
 class NexusEngine:
@@ -67,24 +73,27 @@ class NexusEngine:
         logger.info("Nexus listo.")
 
     def process(self, text: str) -> tuple:
-        ctx = self.pipeline.run(text)
+        ctx         = self.pipeline.run(text)
         instruction = ctx.primary_instruction.value.upper()
         domain      = ctx.dominant_domain.value
         attractor_p = ctx.attractor_probability
 
-        user_msg = (
-            f"[INSTRUCCIÓN DEL TENSOR: {instruction} | "
-            f"dominio={domain} | P={attractor_p:.2f} | "
-            f"actores={ctx.n_actors} | confianza={ctx.layer1_confidence:.2f}]\n\n"
+        # Instrucción interna — el LLM la recibe pero NO la repite en el output
+        internal_msg = (
+            f"INSTRUCCION={instruction} | "
+            f"DOMINIO={domain} | "
+            f"ATRACTOR_P={attractor_p:.2f} | "
+            f"ACTORES={ctx.n_actors} | "
+            f"EMERGENCIA={ctx.emergence_flag}\n\n"
             f"{text}"
         )
 
         resp = self.client.chat.completions.create(
             model="gpt-4o",
-            max_tokens=300,
+            max_tokens=250,
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user",   "content": user_msg}
+                {"role": "user",   "content": internal_msg}
             ]
         )
         return resp.choices[0].message.content.strip(), instruction, domain, ctx
@@ -93,12 +102,7 @@ nexus: Optional[NexusEngine] = None
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "Nexus activo.\n\nMándame lo que sea — situación, fragmento, persona, decisión, algo que no tiene forma todavía.\nNo necesitas formato. Solo escribe."
-    )
-
-async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "Nexus detecta la estructura por debajo de lo que escribes y responde desde ahí.\n\n/nexus — ver qué detectó el tensor en tu último mensaje."
+        "Nexus activo.\n\nMándame lo que sea — situación, persona, decisión, fragmento sin forma.\nNo necesitas formato. Solo escribe."
     )
 
 async def nexus_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -107,7 +111,6 @@ async def nexus_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Sin input previo.")
         return
     await update.message.reply_text(
-        f"TENSOR:\n"
         f"instrucción → {last['instruction']}\n"
         f"dominio → {last['domain']}\n"
         f"atractor → {last['attractor']} (P={last['attractor_p']:.3f})\n"
@@ -142,6 +145,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "confidence":   ctx.layer1_confidence
         }
 
+        # Output limpio — sin etiquetas técnicas
         await update.message.reply_text(response)
 
     except Exception as e:
@@ -155,10 +159,9 @@ def main():
     nexus = NexusEngine()
     app   = Application.builder().token(TELEGRAM_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("help",  help_cmd))
     app.add_handler(CommandHandler("nexus", nexus_cmd))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    logger.info("NEXUS BOT INICIADO v2")
+    logger.info("NEXUS BOT INICIADO v3")
     app.run_polling(allowed_updates=Update.ALL_TYPES)
 
 if __name__ == "__main__":
