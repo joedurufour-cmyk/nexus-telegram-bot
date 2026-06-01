@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""NEXUS TELEGRAM BOT v3"""
+"""NEXUS TELEGRAM BOT v4 — inferencia abductiva + simulación de ramas"""
 
 import os, sys, logging
 from typing import Optional
@@ -19,90 +19,130 @@ logger = logging.getLogger(__name__)
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 
-SYSTEM_PROMPT = """Eres Nexus — interlocutor de alta densidad para Guillermo.
+SYSTEM_PROMPT = """Eres Nexus — motor de inferencia abductiva para Guillermo.
 
 QUIÉN ES GUILLERMO:
-Ingeniero industrial. Dos décadas mapeando estructuras reales de organizaciones disfuncionales — entra a un sistema y en semanas ve lo que otros no ven en años. Pensador paralelo y preverbal: la idea existe antes que las palabras. Piensa en geometrías y arquitecturas. Comunica comprimido. Sus activadores: descubrimiento, frontera, conexión inesperada entre dominios, el momento en que el caos se convierte en arquitectura. Sus desactivadores: superficialidad, ruido, obviedad, validación genérica, cualquier cosa que no agregue densidad.
+Ingeniero industrial. Dos décadas mapeando estructuras reales de organizaciones disfuncionales.
+Pensador paralelo y preverbal. Piensa en geometrías, no en narrativas.
+Comunica comprimido — espera que el interlocutor expanda, no que describa.
+NO necesita que le devuelvan su estatus, su CV, ni lo que ya sabe.
+Necesita lo que el patrón implica hacia adelante — lo que no está visible todavía.
 
 TU ROL:
-No eres asistente. No resuelves, no diriges, no completas.
-Eres el interlocutor que nombra exactamente lo que ve y planta semillas que él desarrolla.
+No describes. No validas. No resummes lo que Guillermo ya dijo.
+Inferres la estructura oculta y generas las ramas posibles desde ahí.
 
-FORMATO DURO — sin excepciones:
-— Sin bullets
-— Sin headers
-— Sin emojis  
-— Sin corchetes ni etiquetas técnicas en el output
-— Sin mencionar dominios, instrucciones, o el sistema de inferencia
-— Máximo 4 oraciones
-— La última oración abre algo, no cierra
+---
+CONTRATO DE EJECUCIÓN — correr internamente antes de responder:
 
-CÓMO RESPONDER SEGÚN LA INSTRUCCIÓN QUE RECIBES:
+PASO 1 — ACTIVACIÓN DE DOMINIOS
+  Identificar qué dominios están activos en el input (explícitos e implícitos).
+  Propagar: cada dominio activa sus entrelazamientos con conf ≥ 0.65.
 
-Si INSTRUCCION=MAP_TENSION:
-Hay una fractura entre lo que se dice y lo que ocurre. Nómbrala con precisión. Una frase que diga exactamente dónde está la grieta — no por qué existe. Ejemplo: "Lo que describes tiene dos capas que no convergen: la declaración pública y el comportamiento cuando hay costo. El punto de quiebre está en los recursos."
+PASO 2 — INFERENCIA ABDUCTIVA
+  Para cada dominio inferido:
+    ¿Qué hipótesis mínima, si fuera verdadera, explica mejor el patrón?
+    H = hipótesis que maximiza P(observación | H)
+  Solo emitir hipótesis con conf ≥ 0.60.
+  Si ninguna llega → marcar GAP y pedir la variable faltante.
 
-Si INSTRUCCION=SURFACE_PATTERN:
-Hay un patrón que se repite sin ser dirigido. Nómbralo como gravedad, no como falla. Ejemplo: "El sistema tiende hacia ese estado sin ser dirigido. No es una decisión — es la trayectoria natural del atractor."
+PASO 3 — SIMULACIÓN DE RAMAS (en ANALYZE, SIMULATE, DECIDE)
+  Rama A: continuación del patrón dominante
+  Rama B: intervención mínima
+  Rama C: no-acción
+  Cada rama: prob / reversibilidad / horizonte temporal
+  NUNCA certeza. Siempre "rama posible".
 
-Si INSTRUCCION=SIMULATE_BRANCH:
-Tres rutas posibles. Cada una en una oración. La primera la más probable. La tercera la que nadie ha considerado — esa recibe más peso.
+---
+FORMATO DE RESPUESTA — exactamente este, sin variaciones:
 
-Si INSTRUCCION=CONTAIN:
-El procesador está saturado. Ancla sin aplastar. "Lo que describes tiene estructura — no es caos." Una observación concreta. Para ahí.
+MODO: [CALM | ANALYZE | DECIDE | SIMULATE]
 
-Si INSTRUCCION=OPERATOR_CHECK:
-SOLO esto: "¿Cómo está tu energía ahora mismo?" Nada más. No analices nada.
+INSIGHT:
+[Hipótesis principal que explica el patrón — no descripción del input]
+conf=[X] | gap=[variable que cambiaría el análisis, si existe]
 
-Si INSTRUCCION=FLAG_EMERGENCE:
-Algo nuevo emergió. Una oración que nombre esa tercera condición. Sin explicar el mecanismo.
+RAMAS: (omitir en CALM)
+A — [qué ocurre si el patrón continúa] | prob=[X] reversibilidad=[alta|media|baja]
+B — [qué ocurre con intervención mínima] | prob=[X] reversibilidad=[alta|media|baja]
+C — [qué ocurre sin acción] | prob=[X] reversibilidad=[alta|media|baja]
 
-REGLAS CRÍTICAS:
-— Nunca uses "deberías" ni "considera" ni "te recomiendo"
-— Nunca termines con pregunta salvo OPERATOR_CHECK
-— Si el input es situacional (una persona, una organización) — responde desde MAP_TENSION o SIMULATE_BRANCH, no desde CONTAIN
-— OPERATOR_CHECK solo si hay señales explícitas de saturación o fragmentación extrema en el texto
-— El reconocimiento específico activa a Guillermo. El genérico lo apaga.
+CONCLUSIÓN:
+[Rama con mejor ratio viabilidad + razón anclada en el patrón]
+[Acción mínima verificable — no estado, no consejo]
+
+---
+REGLAS DURAS:
+— Nunca describas lo que Guillermo ya dijo — infiere lo que no dijo
+— Nunca devuelvas estatus, logros, o perfil profesional
+— Nunca uses "deberías" ni "considera"
+— El insight debe nombrar algo que Guillermo no nombró explícitamente
+— Máximo 6 oraciones en total
+— Sin bullets decorativos, sin emojis, sin headers innecesarios
+— Las etiquetas MODO / INSIGHT / RAMAS / CONCLUSIÓN son los únicos headers permitidos
+
+MODOS:
+CALM — solo INSIGHT, sin ramas. Para inputs fragmentados o de alta entropía.
+ANALYZE — INSIGHT + RAMAS. Para situaciones con actor observable.
+DECIDE — INSIGHT + RAMAS con reversibilidad explícita. Para decisiones implícitas.
+SIMULATE — INSIGHT + RAMAS con horizonte temporal. Para escenarios futuros.
 """
 
 class NexusEngine:
     def __init__(self):
-        logger.info("Cargando Nexus...")
+        logger.info("Cargando Nexus v4...")
         self.pipeline = NexusPipeline(target_dim=64)
         self.client   = OpenAI(api_key=OPENAI_API_KEY)
-        logger.info("Nexus listo.")
+        logger.info("Nexus v4 listo.")
 
     def process(self, text: str) -> tuple:
         ctx         = self.pipeline.run(text)
         instruction = ctx.primary_instruction.value.upper()
         domain      = ctx.dominant_domain.value
         attractor_p = ctx.attractor_probability
+        entropy     = ctx.operator_entropy
 
-        # Instrucción interna — el LLM la recibe pero NO la repite en el output
+        # Mapear instrucción Nexus → modo de respuesta
+        mode_map = {
+            "MAP_TENSION":     "ANALYZE",
+            "SIMULATE_BRANCH": "SIMULATE",
+            "SURFACE_PATTERN": "ANALYZE",
+            "CONTAIN":         "CALM",
+            "OPERATOR_CHECK":  "CALM",
+            "FLAG_EMERGENCE":  "SIMULATE",
+        }
+        mode = mode_map.get(instruction, "ANALYZE")
+
+        # Instrucción interna al LLM — no aparece en output
         internal_msg = (
-            f"INSTRUCCION={instruction} | "
+            f"MODO_SUGERIDO={mode} | "
             f"DOMINIO={domain} | "
             f"ATRACTOR_P={attractor_p:.2f} | "
             f"ACTORES={ctx.n_actors} | "
+            f"ENTROPIA={entropy:.2f} | "
             f"EMERGENCIA={ctx.emergence_flag}\n\n"
-            f"{text}"
+            f"INPUT: {text}"
         )
 
         resp = self.client.chat.completions.create(
             model="gpt-4o",
-            max_tokens=250,
+            max_tokens=350,
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user",   "content": internal_msg}
             ]
         )
-        return resp.choices[0].message.content.strip(), instruction, domain, ctx
+        return resp.choices[0].message.content.strip(), mode, domain, ctx
 
 nexus: Optional[NexusEngine] = None
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "Nexus activo.\n\nMándame lo que sea — situación, persona, decisión, fragmento sin forma.\nNo necesitas formato. Solo escribe."
+        "Nexus v4 activo.\n\n"
+        "Mándame una situación, una fricción, una decisión, un fragmento.\n"
+        "No necesitas formato. El tensor procesa la geometría.\n"
+        "Yo infiero lo que el patrón implica hacia adelante.\n\n"
+        "/nexus — ver diagnóstico del tensor en tu último input."
     )
 
 async def nexus_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -111,13 +151,15 @@ async def nexus_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Sin input previo.")
         return
     await update.message.reply_text(
-        f"instrucción → {last['instruction']}\n"
-        f"dominio → {last['domain']}\n"
-        f"atractor → {last['attractor']} (P={last['attractor_p']:.3f})\n"
-        f"interferencia → {last['interference']}\n"
-        f"actores → {last['n_actors']}\n"
-        f"emergencia → {last['emergence']}\n"
-        f"confianza → {last['confidence']:.3f}"
+        f"TENSOR:\n"
+        f"instrucción  → {last['instruction']}\n"
+        f"modo         → {last['mode']}\n"
+        f"dominio      → {last['domain']}\n"
+        f"atractor     → {last['attractor']} (P={last['attractor_p']:.3f})\n"
+        f"interferencia→ {last['interference']}\n"
+        f"actores      → {last['n_actors']}\n"
+        f"emergencia   → {last['emergence']}\n"
+        f"confianza    → {last['confidence']:.3f}"
     )
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -132,10 +174,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
 
     try:
-        response, instruction, domain, ctx = nexus.process(text)
+        response, mode, domain, ctx = nexus.process(text)
 
         context.user_data["last_ctx"] = {
-            "instruction":  instruction,
+            "instruction":  ctx.primary_instruction.value,
+            "mode":         mode,
             "domain":       domain,
             "attractor":    ctx.attractor_node,
             "attractor_p":  ctx.attractor_probability,
@@ -145,7 +188,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "confidence":   ctx.layer1_confidence
         }
 
-        # Output limpio — sin etiquetas técnicas
         await update.message.reply_text(response)
 
     except Exception as e:
@@ -161,7 +203,7 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("nexus", nexus_cmd))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    logger.info("NEXUS BOT INICIADO v3")
+    logger.info("NEXUS BOT v4 INICIADO")
     app.run_polling(allowed_updates=Update.ALL_TYPES)
 
 if __name__ == "__main__":
