@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: nexus-copilot
+    runtime: python
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: python nexus_bot_full.py
+    envVars:
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: GITHUB_TOKEN
+        sync: false
+      - key: GITHUB_REPO
+        sync: false
+      - key: PYTHON_VERSION
+        value: 3.11.0
+    autoDeploy: true
